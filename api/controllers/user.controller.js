@@ -9,34 +9,40 @@ export const test = (req, res) => {
 }
 
 export const updateUser = async (req, res, next) => {
-    if(req.user.id !== req.params.id){
-        return next(errorHandler(401, "Vous pouvez ne povez changer que vos propres informations"));
+    if (req.user.id !== req.params.id) {
+        return next(errorHandler(401, "Vous ne pouvez modifier que vos propres informations"));
     }
 
     try {
-        if(req.body.password){
+        // Si un mot de passe est fourni, le hacher
+        if (req.body.password) {
             req.body.password = bcryptjs.hashSync(req.body.password, 10);
         }
 
+        // Construire dynamiquement l'objet `$set`
+        const updateFields = {};
+        if (req.body.username) updateFields.username = req.body.username;
+        if (req.body.email) updateFields.email = req.body.email;
+        if (req.body.password) updateFields.password = req.body.password;
+        if (req.body.avatar) updateFields.avatar = req.body.avatar;
+
+        // Effectuer la mise à jour
         const updatedUser = await User.findByIdAndUpdate(
             req.params.id,
-            {
-                $set:{
-                    username: req.body.username,
-                    email: req.body.email,
-                    password: req.body.password,
-                    avatar: req.body.avatar
-                }
-            },
-            {new: true}
-        )
+            { $set: updateFields },
+            { new: true }
+        );
 
-        const {password, ...rest} = updatedUser._doc;
+        if (!updatedUser) {
+            return next(errorHandler(404, "Utilisateur introuvable"));
+        }
+
+        const { password, ...rest } = updatedUser._doc;
         res.status(200).send(rest);
     } catch (error) {
         next(error);
     }
-}
+};
 
 export const deleteUser = async (req, res, next) => {
     if(req.user.id !== req.params.id) {
