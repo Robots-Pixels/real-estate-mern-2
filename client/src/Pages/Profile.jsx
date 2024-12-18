@@ -4,16 +4,21 @@ import axios from 'axios';
 import { 
   updateFailure, 
   updateStart, 
-  updateSuccess
+  updateSuccess,
+  deleteUserFailure,
+  deleteUserStart,
+  deleteUserSuccess
  } from '../redux/user/userSlice'; 
 
 export default function Profile() {
-  const { currentUser } = useSelector(state => state.user);
+
+  const { currentUser, loading, error } = useSelector(state => state.user);
   const fileRef = useRef(null);
   const [file, setFile] = useState(null);
   const [formData, setFormData] = useState({});
   const [uploadPercent, setUploadPercent] = useState(null);
   const [fileUploadError, setFileUploadError] = useState(false);
+  const [updateProfileSuccess, setUpdateProfileSuccess] = useState(false);
   const dispatch = useDispatch();
   
   console.log(formData.avatar);
@@ -81,10 +86,31 @@ export default function Profile() {
         return;
       }
       dispatch(updateSuccess(data));
+      setUpdateProfileSuccess(true);
       
     } catch (error) {
       dispatch(updateFailure(error.message));
     }
+  }
+
+  const handleDeleteUser = async() => {
+    try {
+      dispatch(deleteUserStart());
+      const res = await fetch(`/api/user/delete/${currentUser._id}`,
+        {method: "DELETE"}
+      );
+  
+      const data = await res.json();
+      if(data.success === false){
+        dispatch(deleteUserFailure(data.error));
+        return;
+      }
+
+      dispatch(deleteUserSuccess());
+
+    } catch (error) {
+      dispatch(deleteUserFailure(error.message))
+    } 
   }
 
   return (
@@ -123,16 +149,24 @@ export default function Profile() {
 
         <input type="password" placeholder="password" id="password" className="border p-3 rounded-lg" onChange={handleChange}/>
 
-        <button className="bg-slate-700 text-white rounded-lg p-3 uppercase hover:opacity-95 disabled:opacity-80">
-          UPDATE
+        <button
+        type='submit'
+        disabled={loading}
+        className="bg-slate-700 text-white rounded-lg p-3 uppercase hover:opacity-95 disabled:opacity-80">
+          {loading ? "Updating..." : "UPDATE"}
         </button>
 
       </form>
 
       <div className="flex justify-between mt-5">
-        <span className="text-red-700 cursor-pointer">Delete account</span>
+        <span
+        onClick={handleDeleteUser}
+        className="text-red-700 cursor-pointer">Delete account</span>
         <span className="text-red-700 cursor-pointer">Sign out</span>
       </div>
+
+      {error && <p>Erreur: {error}</p>}
+      {updateProfileSuccess && <p className='text-green-700 mt-3'>User is updated successfully</p>}
     </div>
   );
 }
